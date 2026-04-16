@@ -1,0 +1,6 @@
+.ace-tool/
+.omc/
+.playwright-mcp/
+node_modules/
+.DS_Store
+Thumbs.db
