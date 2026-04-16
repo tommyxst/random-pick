@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" defer></script>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body data-view="home">
@@ -287,11 +288,8 @@
           </div>
 
           <div class="animation-stage" id="animation-stage" aria-label="分组动画舞台">
-            <div class="animation-core">
-              <div class="animation-ring animation-ring--outer"></div>
-              <div class="animation-ring animation-ring--inner"></div>
-              <div class="animation-core__label">GROUPING</div>
-            </div>
+            <div id="threejs-container"></div>
+            <!-- Three.js canvas will be injected here -->
           </div>
 
           <div class="panel-actions panel-actions--center">

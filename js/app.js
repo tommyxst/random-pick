@@ -25,6 +25,7 @@ const state = {
   currentRecordIsHistory: false,
   animation: {
     active: false,
+    stopping: false,
     timerId: null,
     chips: [],
     cursor: 0,
@@ -561,99 +562,295 @@ function handleGroupCountChange(nextValue) {
   renderGroup();
 }
 
+// --- Three.js Animation logic ---
+let threeScene, threeCamera, threeRenderer, threeMixer, threeClock;
+let threeObjects = [];
+let speedLines;
+
+function createTextTexture(text) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  
+  // ZZZ Dark background
+  ctx.fillStyle = '#101010';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  // Neon Yellow Border
+  ctx.strokeStyle = '#ffde00';
+  ctx.lineWidth = 14;
+  ctx.strokeRect(7, 7, canvas.width - 14, canvas.height - 14);
+
+  // ZZZ Slanted Caution Strip (Left side)
+  ctx.fillStyle = '#ffde00';
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(60, 0);
+  ctx.lineTo(30, canvas.height);
+  ctx.lineTo(0, canvas.height);
+  ctx.fill();
+
+  // Text
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '900 64px "Orbitron", "Noto Sans SC", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  
+  // Add slight slant to text
+  ctx.setTransform(1, 0, -0.15, 1, 0, 0);
+  ctx.fillText(text, canvas.width / 2 + 20, canvas.height / 2 + 5);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.anisotropy = 16;
+  return texture;
+}
+
+function initThreeScene() {
+  const container = $('threejs-container');
+  if (!container) return;
+  
+  if (threeRenderer) {
+    container.innerHTML = '';
+  }
+
+  const width = container.clientWidth || 800;
+  const height = container.clientHeight || 400;
+
+  threeScene = new THREE.Scene();
+  threeScene.fog = new THREE.FogExp2(0x050505, 0.03);
+
+  threeCamera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
+  threeCamera.position.z = 18;
+  threeCamera.position.y = 0;
+  threeCamera.lookAt(0, 0, 0);
+
+  threeRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
+  threeRenderer.setSize(width, height);
+  threeRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  container.appendChild(threeRenderer.domElement);
+
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+  threeScene.add(ambientLight);
+
+  const dirLight = new THREE.DirectionalLight(0xffde00, 1.2);
+  dirLight.position.set(10, 10, 10);
+  threeScene.add(dirLight);
+
+  const pointLight = new THREE.PointLight(0xff4400, 2, 50);
+  pointLight.position.set(-5, -2, 5);
+  threeScene.add(pointLight);
+
+  // Add Speed Lines Particle System
+  const lineGeo = new THREE.BufferGeometry();
+  const lineCount = 600;
+  const posArray = new Float32Array(lineCount * 3);
+  for(let i=0; i < lineCount * 3; i++) {
+    posArray[i] = (Math.random() - 0.5) * 80;
+  }
+  lineGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+  const lineMat = new THREE.PointsMaterial({
+    color: 0xffde00,
+    size: 0.3,
+    transparent: true,
+    opacity: 0.9,
+    blending: THREE.AdditiveBlending
+  });
+  speedLines = new THREE.Points(lineGeo, lineMat);
+  threeScene.add(speedLines);
+
+  threeClock = new THREE.Clock();
+}
+
 function resetAnimationStage() {
-  const stage = $('animation-stage');
-  if (!stage) return;
-  stage.querySelectorAll('.animation-chip').forEach((chip) => chip.remove());
-  const label = stage.querySelector('.animation-core__label');
-  if (label) label.textContent = 'GROUPING';
-  state.animation.chips = [];
-  state.animation.cursor = 0;
+  if (threeScene) {
+    threeObjects.forEach(obj => {
+      threeScene.remove(obj);
+      if (obj.material.map) obj.material.map.dispose();
+      if (obj.material.emissiveMap) obj.material.emissiveMap.dispose();
+      obj.material.dispose();
+      obj.geometry.dispose();
+    });
+    threeObjects = [];
+    if (speedLines) {
+      speedLines.position.set(0,0,0);
+    }
+  }
 }
 
 function buildAnimationChips(names) {
-  const stage = $('animation-stage');
-  if (!stage) return [];
   resetAnimationStage();
+  const shuffledNames = shuffle(names).slice(0, 40);
 
-  const chipCount = Math.min(names.length, ANIMATION_VISIBLE_LIMIT);
-  const fragment = document.createDocumentFragment();
+  const radius = 14;
+  
+  shuffledNames.forEach((name, i) => {
+    const texture = createTextTexture(name);
+    const material = new THREE.MeshStandardMaterial({ 
+      map: texture,
+      emissive: new THREE.Color(0xffde00),
+      emissiveMap: texture,
+      emissiveIntensity: 0.6, // Make it glow
+      roughness: 0.1,
+      metalness: 0.9,
+      side: THREE.DoubleSide
+    });
+    // Huge cards
+    const geometry = new THREE.PlaneGeometry(7.5, 1.8);
+    const mesh = new THREE.Mesh(geometry, material);
 
-  for (let index = 0; index < chipCount; index += 1) {
-    const chip = document.createElement('div');
-    chip.className = 'animation-chip';
-    chip.textContent = names[index];
-    fragment.appendChild(chip);
-  }
+    const angle = (i / shuffledNames.length) * Math.PI * 2 * 4; // 4 spirals
+    const y = (i - shuffledNames.length / 2) * 0.45;
+    
+    mesh.position.x = Math.cos(angle) * radius;
+    mesh.position.z = Math.sin(angle) * radius;
+    mesh.position.y = y;
+    
+    mesh.lookAt(0, y, 0);
+    mesh.rotateY(Math.PI); 
 
-  stage.appendChild(fragment);
-  return Array.from(stage.querySelectorAll('.animation-chip'));
+    // Base rotation saved in userData to preserve ring shape
+    mesh.userData.baseRotX = mesh.rotation.x;
+    mesh.userData.baseRotY = mesh.rotation.y;
+    mesh.userData.baseRotZ = (Math.random() - 0.5) * 0.4;
+
+    threeScene.add(mesh);
+    threeObjects.push(mesh);
+  });
 }
 
-function positionAnimationChips() {
-  if (!state.animation.active || !state.animation.pendingRecord) return;
-  const stage = $('animation-stage');
-  if (!stage) return;
+function animateThreeJS() {
+  if (!state.animation.active) return;
+  requestAnimationFrame(animateThreeJS);
+  
+  const delta = threeClock.getDelta();
+  const time = threeClock.getElapsedTime();
 
-  const names = state.animation.pendingRecord.names;
-  const shuffledNames = shuffle(names);
-  const { width, height } = stage.getBoundingClientRect();
-  const centerX = width / 2;
-  const centerY = height / 2;
-  const baseRadius = Math.min(width, height) * 0.24;
-  const label = stage.querySelector('.animation-core__label');
-
-  state.animation.chips.forEach((chip, index) => {
-    const name = shuffledNames[(state.animation.cursor + index) % shuffledNames.length];
-    chip.textContent = name;
-
-    const angle = ((Math.PI * 2) / Math.max(1, state.animation.chips.length)) * index + state.animation.cursor * 0.14;
-    const radiusX = baseRadius + Math.random() * width * 0.12;
-    const radiusY = baseRadius * 0.72 + Math.random() * height * 0.1;
-    const chipWidth = chip.offsetWidth || 110;
-    const chipHeight = chip.offsetHeight || 40;
-    const x = centerX + Math.cos(angle) * radiusX - chipWidth / 2;
-    const y = centerY + Math.sin(angle) * radiusY - chipHeight / 2;
-
-    if (typeof window !== 'undefined' && window.gsap) {
-      window.gsap.to(chip, {
-        x,
-        y,
-        opacity: 0.76 + Math.random() * 0.24,
-        scale: 0.9 + Math.random() * 0.2,
-        duration: 0.26,
-        ease: 'power2.out',
-      });
-    } else {
-      chip.style.transform = `translate(${x}px, ${y}px)`;
+  if (!state.animation.stopping) {
+    // Extremely fast spin
+    threeScene.rotation.y -= delta * 5.0; 
+    
+    // Speed lines rushing towards camera
+    if (speedLines) {
+      const positions = speedLines.geometry.attributes.position.array;
+      for(let i=2; i<positions.length; i+=3) {
+        positions[i] += delta * 60; // Hyper speed
+        if (positions[i] > 20) positions[i] = -60;
+      }
+      speedLines.geometry.attributes.position.needsUpdate = true;
     }
+
+    // Dynamic FOV bumping to the beat
+    threeCamera.fov = 75 + Math.sin(time * 20) * 8;
+    threeCamera.updateProjectionMatrix();
+  }
+
+  // Add individual card chaotic jiggle
+  threeObjects.forEach((obj, index) => {
+    obj.rotation.x = obj.userData.baseRotX + Math.sin(time * 8 + index) * 0.1;
+    obj.rotation.y = obj.userData.baseRotY + Math.cos(time * 6 + index) * 0.1;
+    obj.rotation.z = obj.userData.baseRotZ + Math.sin(time * 5 + index) * 0.1;
   });
 
-  state.animation.cursor += 1;
-  if (label) {
-    const displayIndex = (state.animation.cursor % state.animation.pendingRecord.groupCount) + 1;
-    label.textContent = `G-${displayIndex}`;
+  // Camera bobbing
+  threeCamera.position.y = Math.sin(time * 3) * 2.5;
+  threeCamera.lookAt(0, 0, 0);
+
+  if (!state.animation.stopping && Math.random() < 0.2) {
+    playShuffleClick();
   }
-  playShuffleClick();
+
+  threeRenderer.render(threeScene, threeCamera);
 }
 
 function startAnimation(record) {
   state.animation.pendingRecord = record;
   state.animation.active = true;
+  state.animation.stopping = false;
 
   $('animation-meta-names').textContent = `${record.totalPeople} 人`;
   $('animation-meta-groups').textContent = `${record.groupCount} 组`;
   setActiveView('animation');
 
-  state.animation.chips = buildAnimationChips(record.names);
+  if (!threeRenderer) {
+    initThreeScene();
+  } else {
+    // Reset camera just in case
+    threeCamera.position.z = 18;
+    threeCamera.fov = 75;
+    threeCamera.updateProjectionMatrix();
+    threeScene.rotation.y = 0;
+  }
 
-  const run = () => {
-    positionAnimationChips();
-    if (state.animation.timerId) window.clearInterval(state.animation.timerId);
-    state.animation.timerId = window.setInterval(positionAnimationChips, ANIMATION_INTERVAL_MS);
+  buildAnimationChips(record.names);
+  threeClock.start();
+  animateThreeJS();
+  
+  window.addEventListener('resize', onWindowResize);
+}
+
+function onWindowResize() {
+  const container = $('threejs-container');
+  if (!container || !threeCamera || !threeRenderer) return;
+  const width = container.clientWidth;
+  const height = container.clientHeight;
+  threeCamera.aspect = width / height;
+  threeCamera.updateProjectionMatrix();
+  threeRenderer.setSize(width, height);
+}
+
+function stopAnimation() {
+  if (!state.animation.active || !state.animation.pendingRecord || state.animation.stopping) return;
+
+  const record = state.animation.pendingRecord;
+  state.animation.stopping = true;
+  window.removeEventListener('resize', onWindowResize);
+
+  const finish = () => {
+    state.animation.active = false;
+    resetAnimationStage();
+    state.animation.pendingRecord = null;
+    finalizeGrouping(record);
   };
 
-  window.setTimeout(run, 60);
+  if (typeof window !== 'undefined' && window.gsap && threeScene) {
+    // Epic Stop Animation
+    // 1. Scene continues to spin and decelerates
+    window.gsap.to(threeScene.rotation, {
+      y: threeScene.rotation.y - Math.PI * 4, 
+      duration: 1.8,
+      ease: 'power3.inOut'
+    });
+
+    // 2. Camera zooms in extremely close, like entering a warp tunnel
+    window.gsap.to(threeCamera.position, {
+      z: 2, 
+      y: 0,
+      duration: 1.8,
+      ease: 'power4.in',
+      onComplete: finish
+    });
+
+    // 3. FOV stretches violently
+    window.gsap.to(threeCamera, {
+      fov: 130, 
+      duration: 1.8,
+      ease: 'power3.in',
+      onUpdate: () => threeCamera.updateProjectionMatrix()
+    });
+
+    // 4. Speed lines burst forward
+    if (speedLines) {
+      window.gsap.to(speedLines.position, {
+        z: 30,
+        duration: 1.8,
+        ease: 'power2.in'
+      });
+    }
+
+  } else {
+    finish();
+  }
 }
 
 function saveRecordToHistory(record) {
@@ -670,44 +867,7 @@ function finalizeGrouping(record) {
   renderResults(record, false);
   setActiveView('result');
 }
-
-function stopAnimation() {
-  if (!state.animation.active || !state.animation.pendingRecord) return;
-
-  const record = state.animation.pendingRecord;
-  state.animation.active = false;
-
-  if (state.animation.timerId) {
-    window.clearInterval(state.animation.timerId);
-    state.animation.timerId = null;
-  }
-
-  const stage = $('animation-stage');
-  const chips = stage ? stage.querySelectorAll('.animation-chip') : [];
-
-  let finished = false;
-  const finish = () => {
-    if (finished) return;
-    finished = true;
-    resetAnimationStage();
-    state.animation.pendingRecord = null;
-    finalizeGrouping(record);
-  };
-
-  if (typeof window !== 'undefined' && window.gsap && chips.length > 0) {
-    window.gsap.to(chips, {
-      opacity: 0,
-      scale: 0.6,
-      duration: 0.2,
-      stagger: 0.02,
-      ease: 'power2.in',
-      onComplete: finish,
-    });
-    window.setTimeout(finish, 320);
-  } else {
-    finish();
-  }
-}
+// --- End Three.js Animation logic ---
 
 function handleStartGrouping() {
   const validation = getGroupValidation();
