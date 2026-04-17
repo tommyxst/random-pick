@@ -617,10 +617,10 @@ function initThreeScene() {
   const height = container.clientHeight || 400;
 
   threeScene = new THREE.Scene();
-  threeScene.fog = new THREE.FogExp2(0x050505, 0.03);
+  threeScene.fog = new THREE.FogExp2(0x050505, 0.015);
 
   threeCamera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
-  threeCamera.position.z = 18;
+  threeCamera.position.z = 30;
   threeCamera.position.y = 0;
   threeCamera.lookAt(0, 0, 0);
 
@@ -726,8 +726,7 @@ function animateThreeJS() {
   const time = threeClock.getElapsedTime();
 
   if (!state.animation.stopping) {
-    // Extremely fast spin
-    threeScene.rotation.y -= delta * 5.0; 
+    threeScene.rotation.y -= delta * 5.0;
     
     // Speed lines rushing towards camera
     if (speedLines) {
@@ -774,8 +773,7 @@ function startAnimation(record) {
   if (!threeRenderer) {
     initThreeScene();
   } else {
-    // Reset camera just in case
-    threeCamera.position.z = 18;
+    threeCamera.position.z = 30;
     threeCamera.fov = 75;
     threeCamera.updateProjectionMatrix();
     threeScene.rotation.y = 0;
@@ -813,39 +811,37 @@ function stopAnimation() {
   };
 
   if (typeof window !== 'undefined' && window.gsap && threeScene) {
-    // Epic Stop Animation
-    // 1. Scene continues to spin and decelerates
-    window.gsap.to(threeScene.rotation, {
-      y: threeScene.rotation.y - Math.PI * 4, 
-      duration: 1.8,
+    const tl = window.gsap.timeline({ onComplete: finish });
+
+    tl.to(threeScene.rotation, {
+      y: threeScene.rotation.y - Math.PI * 4,
+      duration: 2.4,
       ease: 'power3.inOut'
-    });
+    }, 0);
 
-    // 2. Camera zooms in extremely close, like entering a warp tunnel
-    window.gsap.to(threeCamera.position, {
-      z: 2, 
+    tl.to(threeCamera.position, {
+      z: 2,
       y: 0,
-      duration: 1.8,
-      ease: 'power4.in',
-      onComplete: finish
-    });
+      duration: 2.4,
+      ease: 'power4.in'
+    }, 0);
 
-    // 3. FOV stretches violently
-    window.gsap.to(threeCamera, {
-      fov: 130, 
-      duration: 1.8,
+    tl.to(threeCamera, {
+      fov: 130,
+      duration: 2.4,
       ease: 'power3.in',
       onUpdate: () => threeCamera.updateProjectionMatrix()
-    });
+    }, 0);
 
-    // 4. Speed lines burst forward
     if (speedLines) {
-      window.gsap.to(speedLines.position, {
+      tl.to(speedLines.position, {
         z: 30,
-        duration: 1.8,
+        duration: 2.4,
         ease: 'power2.in'
-      });
+      }, 0);
     }
+
+    tl.to({}, { duration: 0.4 });
 
   } else {
     finish();
