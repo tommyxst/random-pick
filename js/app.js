@@ -251,6 +251,7 @@ function setAppStatus(view) {
   const map = {
     home: 'HOME',
     manage: 'MANAGE',
+    history: 'HISTORY',
     group: 'GROUP',
     animation: 'LIVE',
     result: 'RESULT',
@@ -286,12 +287,12 @@ function animateVisibleView() {
 }
 
 function updateHomeSummary() {
-  const latestRecord = state.history[0];
   const totalPeople = state.names.length + state.extraNames.length;
-  $('home-summary-names').textContent = `${totalPeople} 人`;
-  $('home-summary-history').textContent = `${state.history.length} 次`;
-  $('home-summary-latest').textContent = latestRecord ? formatDateTime(latestRecord.createdAt) : '暂无';
-  $('home-history-meta').textContent = state.history.length > 0 ? `最近 ${Math.min(4, state.history.length)} 条` : '本地保存';
+  $('home-people-count').textContent = String(totalPeople);
+  const historyMeta = $('history-meta');
+  if (historyMeta) {
+    historyMeta.textContent = state.history.length > 0 ? `共 ${state.history.length} 条` : '本地保存';
+  }
 }
 
 function renderChipList(containerId, emptyId, items) {
@@ -402,9 +403,7 @@ function renderGroup() {
   }
 
   $('group-stat-names').textContent = String(state.names.length + state.extraNames.length);
-  $('group-stat-history').textContent = String(state.history.length);
   $('group-group-preview').textContent = `${effectiveGroupCount} 组`;
-  renderHistoryList('group-history-list', 'group-history-empty', 6);
   updateGroupActionState();
 }
 
@@ -493,7 +492,7 @@ function renderResults(record, isHistoryRecord) {
 
 function refreshUi() {
   updateHomeSummary();
-  renderHistoryList('home-history-list', 'home-history-empty', 4);
+  renderHistoryList('history-list', 'history-empty');
   renderManage();
   renderGroup();
   if (state.currentRecord) {
@@ -915,6 +914,11 @@ function bindHistoryClicks(containerId) {
 function bindEvents() {
   $('btn-home-start').addEventListener('click', () => openGroup('group-count'));
   $('btn-home-manage').addEventListener('click', () => openManage('names-input'));
+  $('btn-home-history').addEventListener('click', () => {
+    renderHistoryList('history-list', 'history-empty');
+    setActiveView('history');
+  });
+  $('btn-history-back').addEventListener('click', () => setActiveView('home'));
   $('btn-manage-back').addEventListener('click', () => setActiveView('home'));
   $('btn-group-back').addEventListener('click', () => setActiveView('home'));
   $('btn-manage-to-group').addEventListener('click', () => openGroup('group-count'));
@@ -944,8 +948,7 @@ function bindEvents() {
   $('btn-result-home').addEventListener('click', () => setActiveView('home'));
   $('btn-result-group').addEventListener('click', () => openGroup('group-count'));
 
-  bindHistoryClicks('home-history-list');
-  bindHistoryClicks('group-history-list');
+  bindHistoryClicks('history-list');
 }
 
 function initApp() {

@@ -25,7 +25,7 @@
       <div class="header-copy">
         <p class="eyebrow">RANDOM TEAM GROUPER</p>
         <h1 class="app-title glitch" data-text="随机分组">随机分组</h1>
-        <p class="app-subtitle">首页突出开始分组，名单、设置、动画和结果拆成清晰流程。</p>
+        <p class="app-subtitle">快速随机分组工具，本地运行，数据不上传。</p>
       </div>
       <div class="header-status" aria-live="polite">
         <span class="status-dot status-dot--active" aria-hidden="true"></span>
@@ -35,54 +35,50 @@
 
     <main class="views" aria-live="polite">
       <section class="view view-home" id="view-home" data-view="home">
-        <div class="hero-panel panel">
-          <div class="hero-copy">
-            <p class="section-kicker">首页</p>
-            <h2 class="hero-title">先选名单管理，或直接进入分组设置。</h2>
-            <p class="hero-text">
-              首页两个入口会进入不同模块：名单管理页只处理名单维护，开始分组页只处理人数概览、历史回顾和组数设置。
-            </p>
-          </div>
-
-          <div class="hero-actions">
-            <button id="btn-home-start" class="btn btn-primary btn-primary--hero" type="button">
-              <span class="btn-primary-content">
-                <span class="btn-primary-icon" aria-hidden="true">⚡</span>
-                <span>开始分组</span>
-              </span>
-            </button>
-            <button id="btn-home-manage" class="btn btn-secondary btn-secondary--ghost" type="button">
+        <div class="home-center">
+          <div class="home-center-bg" aria-hidden="true"></div>
+          <div class="home-dots" aria-hidden="true"></div>
+          <div class="home-corner home-corner--tl" aria-hidden="true"></div>
+          <div class="home-corner home-corner--tr" aria-hidden="true"></div>
+          <div class="home-corner home-corner--bl" aria-hidden="true"></div>
+          <div class="home-corner home-corner--br" aria-hidden="true"></div>
+          <button id="btn-home-start" class="btn btn-primary btn-primary--hero" type="button">
+            <span class="btn-primary-content">
+              <span class="btn-primary-icon" aria-hidden="true">⚡</span>
+              <span>开始分组</span>
+            </span>
+          </button>
+          <p class="home-people-count">当前名单：<strong id="home-people-count">0</strong> 人</p>
+          <div class="home-nav">
+            <button id="btn-home-manage" class="btn btn-secondary" type="button">
               <span class="btn-icon" aria-hidden="true">⌘</span>
               名单管理
             </button>
-          </div>
-
-          <div class="hero-stats">
-            <article class="summary-card">
-              <span class="summary-card__label">当前名单</span>
-              <strong class="summary-card__value" id="home-summary-names">0 人</strong>
-            </article>
-            <article class="summary-card">
-              <span class="summary-card__label">历史记录</span>
-              <strong class="summary-card__value" id="home-summary-history">0 次</strong>
-            </article>
-            <article class="summary-card">
-              <span class="summary-card__label">最近分组</span>
-              <strong class="summary-card__value" id="home-summary-latest">暂无</strong>
-            </article>
+            <button id="btn-home-history" class="btn btn-secondary" type="button">
+              <span class="btn-icon" aria-hidden="true">◷</span>
+              分组历史
+            </button>
           </div>
         </div>
+      </section>
 
+      <section class="view view-history" id="view-history" data-view="history" hidden>
+        <div class="view-toolbar">
+          <button id="btn-history-back" class="btn btn-secondary" type="button">
+            <span class="btn-icon" aria-hidden="true">←</span>
+            返回首页
+          </button>
+          <span class="toolbar-hint" id="history-meta">本地保存</span>
+        </div>
         <section class="panel history-panel">
           <div class="section-head">
             <div>
-              <p class="section-kicker">首页回顾</p>
-              <h3 class="section-title">历史分组</h3>
+              <p class="section-kicker">分组历史</p>
+              <h2 class="section-title">历史分组记录</h2>
             </div>
-            <span class="section-meta" id="home-history-meta">本地保存</span>
           </div>
-          <div class="history-list" id="home-history-list"></div>
-          <p class="empty-state" id="home-history-empty">还没有历史分组记录。</p>
+          <div class="history-list" id="history-list"></div>
+          <p class="empty-state" id="history-empty">还没有历史分组记录。</p>
         </section>
       </section>
 
@@ -199,78 +195,56 @@
             <span class="btn-icon" aria-hidden="true">←</span>
             返回首页
           </button>
-          <span class="toolbar-hint">开始分组页独立展示名单人数、历史分组和组数设置。</span>
         </div>
 
-        <div class="setup-grid">
-          <div class="setup-main">
-            <section class="panel history-panel">
-              <div class="section-head">
-                <div>
-                  <p class="section-kicker">当前名单</p>
-                  <h2 class="section-title">开始分组前的参数确认</h2>
-                </div>
-                <div class="count-pill count-pill--accent" id="group-group-preview">2 组</div>
-              </div>
-
-              <div class="stats-row">
-                <article class="stat-card">
-                  <span class="stat-card__label">名单人数</span>
-                  <strong class="stat-card__value" id="group-stat-names">0</strong>
-                </article>
-                <article class="stat-card">
-                  <span class="stat-card__label">历史次数</span>
-                  <strong class="stat-card__value" id="group-stat-history">0</strong>
-                </article>
-              </div>
-
-              <div class="group-count-box">
-                <label for="group-count" class="group-count-box__label">需要的组数</label>
-                <div class="number-input-wrapper">
-                  <button id="btn-group-dec" class="number-btn" type="button" aria-label="减少组数">−</button>
-                  <input
-                    id="group-count"
-                    class="number-input"
-                    type="number"
-                    min="1"
-                    max="99"
-                    value="2"
-                    inputmode="numeric"
-                  >
-                  <button id="btn-group-inc" class="number-btn" type="button" aria-label="增加组数">+</button>
-                </div>
-                <p class="helper-text">组数不能超过当前名单人数。</p>
-              </div>
-
-              <div class="panel-actions panel-actions--stack">
-                <button id="btn-group-to-manage" class="btn btn-secondary" type="button">
-                  <span class="btn-icon" aria-hidden="true">⌘</span>
-                  去名单管理
-                </button>
-                <button id="btn-start-grouping" class="btn btn-primary" type="button">
-                  <span class="btn-primary-content">
-                    <span class="btn-primary-icon" aria-hidden="true">⚡</span>
-                    <span>开始分组</span>
-                  </span>
-                </button>
-                <span class="helper-text" id="group-action-hint">请先准备名单后再开始。</span>
-              </div>
-            </section>
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="section-kicker">参数确认</p>
+              <h2 class="section-title">开始分组前的参数确认</h2>
+            </div>
+            <div class="count-pill count-pill--accent" id="group-group-preview">2 组</div>
           </div>
 
-          <aside class="setup-side">
-            <section class="panel history-panel">
-              <div class="section-head">
-                <div>
-                  <p class="section-kicker">历史分组</p>
-                  <h2 class="section-title">开始分组页回顾</h2>
-                </div>
-              </div>
-              <div class="history-list history-list--compact" id="group-history-list"></div>
-              <p class="empty-state" id="group-history-empty">还没有可查看的历史记录。</p>
-            </section>
-          </aside>
-        </div>
+          <div class="stats-row">
+            <article class="stat-card">
+              <span class="stat-card__label">名单人数</span>
+              <strong class="stat-card__value" id="group-stat-names">0</strong>
+            </article>
+          </div>
+
+          <div class="group-count-box">
+            <label for="group-count" class="group-count-box__label">需要的组数</label>
+            <div class="number-input-wrapper">
+              <button id="btn-group-dec" class="number-btn" type="button" aria-label="减少组数">−</button>
+              <input
+                id="group-count"
+                class="number-input"
+                type="number"
+                min="1"
+                max="99"
+                value="2"
+                inputmode="numeric"
+              >
+              <button id="btn-group-inc" class="number-btn" type="button" aria-label="增加组数">+</button>
+            </div>
+            <p class="helper-text">组数不能超过当前名单人数。</p>
+          </div>
+
+          <div class="panel-actions panel-actions--stack">
+            <button id="btn-group-to-manage" class="btn btn-secondary" type="button">
+              <span class="btn-icon" aria-hidden="true">⌘</span>
+              去名单管理
+            </button>
+            <button id="btn-start-grouping" class="btn btn-primary" type="button">
+              <span class="btn-primary-content">
+                <span class="btn-primary-icon" aria-hidden="true">⚡</span>
+                <span>开始分组</span>
+              </span>
+            </button>
+            <span class="helper-text" id="group-action-hint">请先准备名单后再开始。</span>
+          </div>
+        </section>
       </section>
 
       <section class="view view-animation" id="view-animation" data-view="animation" hidden>
@@ -296,7 +270,7 @@
             <button id="btn-stop-animation" class="btn btn-primary" type="button">
               <span class="btn-primary-content">
                 <span class="btn-primary-icon" aria-hidden="true">■</span>
-                <span>结束展示</span>
+                <span>结束</span>
               </span>
             </button>
           </div>
